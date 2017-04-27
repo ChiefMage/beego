@@ -110,6 +110,17 @@ func TestHtmlunquote(t *testing.T) {
 }
 
 func TestParseForm(t *testing.T) {
+	type ExtendInfo struct {
+		Hobby string `form:"hobby"`
+		Memo  string
+	}
+
+	type OtherInfo struct {
+		Organization string `form:"organization"`
+		Title        string `form:"title"`
+		ExtendInfo
+	}
+
 	type user struct {
 		ID      int         `form:"-"`
 		tag     string      `form:"tag"`
@@ -119,19 +130,24 @@ func TestParseForm(t *testing.T) {
 		Intro   string    `form:",textarea"`
 		StrBool bool      `form:"strbool"`
 		Date    time.Time `form:"date,2006-01-02"`
+		OtherInfo
 	}
 
 	u := user{}
 	form := url.Values{
-		"ID":       []string{"1"},
-		"-":        []string{"1"},
-		"tag":      []string{"no"},
-		"username": []string{"test"},
-		"age":      []string{"40"},
-		"Email":    []string{"test@gmail.com"},
-		"Intro":    []string{"I am an engineer!"},
-		"strbool":  []string{"yes"},
-		"date":     []string{"2014-11-12"},
+		"ID":           []string{"1"},
+		"-":            []string{"1"},
+		"tag":          []string{"no"},
+		"username":     []string{"test"},
+		"age":          []string{"40"},
+		"Email":        []string{"test@gmail.com"},
+		"Intro":        []string{"I am an engineer!"},
+		"strbool":      []string{"yes"},
+		"date":         []string{"2014-11-12"},
+		"organization": []string{"beego"},
+		"title":        []string{"CXO"},
+		"hobby":        []string{"Basketball"},
+		"memo":         []string{"nothing"},
 	}
 	if err := ParseForm(form, u); err == nil {
 		t.Fatal("nothing will be changed")
@@ -157,12 +173,24 @@ func TestParseForm(t *testing.T) {
 	if u.Intro != "I am an engineer!" {
 		t.Errorf("Intro should equal `I am an engineer!` but got `%v`", u.Intro)
 	}
-	if u.StrBool != true {
+	if !u.StrBool {
 		t.Errorf("strboll should equal `true`, but got `%v`", u.StrBool)
 	}
 	y, m, d := u.Date.Date()
 	if y != 2014 || m.String() != "November" || d != 12 {
 		t.Errorf("Date should equal `2014-11-12`, but got `%v`", u.Date.String())
+	}
+	if u.Organization != "beego" {
+		t.Errorf("Organization should equal `beego`, but got `%v`", u.Organization)
+	}
+	if u.Title != "CXO" {
+		t.Errorf("Title should equal `CXO`, but got `%v`", u.Title)
+	}
+	if u.Hobby != "Basketball" {
+		t.Errorf("Hobby should equal `Basketball`, but got `%v`", u.Hobby)
+	}
+	if len(u.Memo) != 0 {
+		t.Errorf("Memo's length should equal 0 but got %v", len(u.Memo))
 	}
 }
 
@@ -227,43 +255,43 @@ func TestParseFormTag(t *testing.T) {
 	objT := reflect.TypeOf(&user{}).Elem()
 
 	label, name, fType, id, class, ignored, required := parseFormTag(objT.Field(0))
-	if !(name == "name" && label == "年龄：" && fType == "text" && ignored == false) {
+	if !(name == "name" && label == "年龄：" && fType == "text" && !ignored) {
 		t.Errorf("Form Tag with name, label and type was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(1))
-	if !(name == "NoName" && label == "年龄：" && fType == "hidden" && ignored == false) {
+	if !(name == "NoName" && label == "年龄：" && fType == "hidden" && !ignored) {
 		t.Errorf("Form Tag with label and type but without name was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(2))
-	if !(name == "OnlyLabel" && label == "年龄：" && fType == "text" && ignored == false) {
+	if !(name == "OnlyLabel" && label == "年龄：" && fType == "text" && !ignored) {
 		t.Errorf("Form Tag containing only label was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(3))
-	if !(name == "name" && label == "OnlyName: " && fType == "text" && ignored == false &&
+	if !(name == "name" && label == "OnlyName: " && fType == "text" && !ignored &&
 		id == "name" && class == "form-name") {
 		t.Errorf("Form Tag containing only name was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(4))
-	if ignored == false {
+	if !ignored {
 		t.Errorf("Form Tag that should be ignored was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(5))
-	if !(name == "name" && required == true) {
+	if !(name == "name" && required) {
 		t.Errorf("Form Tag containing only name and required was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(6))
-	if !(name == "name" && required == false) {
+	if !(name == "name" && !required) {
 		t.Errorf("Form Tag containing only name and ignore required was not correctly parsed.")
 	}
 
 	label, name, fType, id, class, ignored, required = parseFormTag(objT.Field(7))
-	if !(name == "name" && required == false) {
+	if !(name == "name" && !required) {
 		t.Errorf("Form Tag containing only name and not required was not correctly parsed.")
 	}
 
